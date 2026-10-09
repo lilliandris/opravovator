@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1b212b">
+  <meta name="description" content="Opravovanie PDF riešení korešpondenčných seminárov">
+  <link rel="icon" href="/logo.ico" sizes="32x32">
+  <link rel="icon" href="/logo.png" type="image/png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <title>Opravovátor</title>
+  <script>
+    // téma a farba ešte pred vykreslením, aby stránka nebliklo
+    try {
+      var d = document.documentElement, t = localStorage.getItem('opravovator-theme');
+      if (t === 'light' || t === 'dark') d.dataset.theme = t;
+      var a = JSON.parse(localStorage.getItem('opravovator-accent-vars') || 'null');
+      if (a) {
+        var c = (t || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')) === 'light' ? a.light : a.dark;
+        d.style.setProperty('--pen', c.pen); d.style.setProperty('--on-pen', c.on);
+      }
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

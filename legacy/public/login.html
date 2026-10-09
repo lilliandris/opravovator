@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Opravovač – prihlásenie</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<main class="auth">
+  <div class="auth-card">
+    <h1>Opravovač</h1>
+    <p class="lead">Opravovanie PDF riešení pre opravovateľov Trojstenu.</p>
+    <div class="tabs" role="tablist">
+      <button id="tabLogin" class="on" type="button">Prihlásenie</button>
+      <button id="tabReg" type="button">Registrácia</button>
+    </div>
+
+    <form id="loginForm">
+      <label class="field"><span>E-mail</span><input class="input" name="email" type="email" autocomplete="email" required placeholder="meno@trojsten.sk"></label>
+      <label class="field"><span>Heslo</span><input class="input" name="password" type="password" autocomplete="current-password" required></label>
+      <p class="error" id="loginErr"></p>
+      <button class="btn primary" style="width:100%">Prihlásiť sa</button>
+    </form>
+
+    <form id="regForm" hidden>
+      <label class="field"><span>Meno (podpisuje sa pod body v PDF)</span><input class="input" name="name" required placeholder="Patrik"></label>
+      <label class="field"><span>E-mail</span><input class="input" name="email" type="email" autocomplete="email" required placeholder="meno@trojsten.sk"></label>
+      <label class="field"><span>Heslo</span><input class="input" name="password" id="regPw" type="password" autocomplete="new-password" required></label>
+      <ul class="pwcheck" id="pwcheck">
+        <li data-r="len">aspoň 8 znakov</li><li data-r="lo">malé písmeno</li>
+        <li data-r="up">veľké písmeno</li><li data-r="num">číslica</li>
+        <li data-r="sp">špeciálny znak</li>
+      </ul>
+      <label class="field"><span>Heslo znova</span><input class="input" name="password2" type="password" autocomplete="new-password" required></label>
+      <p class="error" id="regErr"></p>
+      <button class="btn primary" style="width:100%">Vytvoriť účet</button>
+    </form>
+
+    <div id="googleBox" hidden>
+      <div class="or">alebo</div>
+      <div id="googleBtn"></div>
+    </div>
+  </div>
+</main>
+<script src="/js/common.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+let DOMAIN = 'trojsten.sk';
+function tab(reg) {
+  $('#tabLogin').classList.toggle('on', !reg); $('#tabReg').classList.toggle('on', reg);
+  $('#loginForm').hidden = reg; $('#regForm').hidden = !reg;
+}
+$('#tabLogin').onclick = () => tab(false);
+$('#tabReg').onclick = () => tab(true);
+
+const rules = { len: p => p.length >= 8, lo: p => /[a-z]/.test(p), up: p => /[A-Z]/.test(p), num: p => /[0-9]/.test(p), sp: p => /[^A-Za-z0-9]/.test(p) };
+$('#regPw').addEventListener('input', e => {
+  document.querySelectorAll('#pwcheck li').forEach(li => li.classList.toggle('ok', rules[li.dataset.r](e.target.value)));
+});
+
+$('#loginForm').onsubmit = async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  try {
+    await api('/api/auth/login', { method: 'POST', body: { email: f.get('email'), password: f.get('password') } });
+    location.href = '/';
+  } catch (err) { $('#loginErr').textContent = err.message; }
+};
+$('#regForm').onsubmit = async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const email = String(f.get('email')).trim().toLowerCase();
+  if (!email.endsWith('@' + DOMAIN)) return $('#regErr').textContent = `Použi e-mail @${DOMAIN}.`;
+  if (!Object.values(rules).every(r => r(f.get('password')))) return $('#regErr').textContent = 'Heslo nespĺňa požiadavky.';
+  if (f.get('password') !== f.get('password2')) return $('#regErr').textContent = 'Heslá sa nezhodujú.';
+  try {
+    await api('/api/auth/register', { method: 'POST', body: { name: f.get('name'), email, password: f.get('password') } });
+    location.href = '/';
+  } catch (err) { $('#regErr').textContent = err.message; }
+};
+
+(async () => {
+  const cfg = await api('/api/auth/config');
+  DOMAIN = cfg.domain;
+  if (!cfg.googleClientId) return;
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.onload = () => {
+    google.accounts.id.initialize({
+      client_id: cfg.googleClientId,
+      hd: cfg.domain,
+      callback: async r => {
+        try {
+          await api('/api/auth/google', { method: 'POST', body: { credential: r.credential } });
+          location.href = '/';
+        } catch (err) { $('#loginErr').textContent = err.message; tab(false); }
+      },
+    });
+    google.accounts.id.renderButton($('#googleBtn'), { theme: 'filled_black', size: 'large', width: 400, text: 'continue_with' });
+    $('#googleBox').hidden = false;
+  };
+  document.head.append(s);
+})();
+</script>
+</body>
+</html>

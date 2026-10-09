@@ -1,0 +1,25 @@
+{
+  "name": "opravovator",
+  "private": true,
+  "version": "2.0.0",
+  "description": "Webový editor na opravovanie PDF riešení korešpondenčných seminárov",
+  "workspaces": [
+    "shared",
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w server & npm run dev -w web",
+    "build": "npm run build -w web && npm run build -w server",
+    "start": "npm start -w server",
+    "typecheck": "tsc -p shared && tsc -p server --noEmit && tsc -p web --noEmit"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lilliandris/opravovator.git"
+  }
+}

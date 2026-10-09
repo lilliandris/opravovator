@@ -1,0 +1,16 @@
+# text vždy s LF (skripty musia fungovať aj v Linuxe / Dockeri)
+* text=auto eol=lf
+*.sh text eol=lf
+
+# binárne súbory
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.ttf binary
+*.zip binary
+*.gz binary
+
+# zámok balíčkov sa v diffoch nezobrazuje celý
+package-lock.json -diff linguist-generated

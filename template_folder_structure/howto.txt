@@ -1,0 +1,1 @@
+Hromadné opravovanie funguje tak, že si stiahneš ZIP so všetkými riešeniami a pozeráš si ich lokálne. Keď niektoré riešenie opravíš, zapíšeš komentár a body do príslušných súborov komentar.txt a body.txt v priečinku riešiteľa. Poprípade môžeš aj nahrať upravený súbor s riešením a komentárom tak, že mu zmeníš príponu z .pdf na .komentar.pdf.

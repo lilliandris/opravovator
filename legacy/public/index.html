@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Opravovač – úlohy</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">Opravovač</a>
+  <span class="spacer"></span>
+  <span class="muted" id="me"></span>
+  <button class="btn" id="profileBtn">Profil</button>
+  <button class="btn" onclick="logout()">Odhlásiť</button>
+</header>
+<main class="home">
+  <h2>Nová úloha</h2>
+  <div class="dropzone" id="drop">
+    <p>Pretiahni sem zip s riešeniami alebo ho vyber zo súborov.<br>
+      <span class="muted">Štruktúra: <code>Názov úlohy/xxx-meno-priezvisko-ID/meno-priezvisko.pdf</code></span></p>
+    <input type="file" id="zipInput" accept=".zip,application/zip" hidden>
+    <button class="btn primary" id="pick">Vybrať zip</button>
+    <p class="error" id="upErr" style="margin-top:10px"></p>
+  </div>
+
+  <h2>Úlohy</h2>
+  <div class="tasklist" id="tasks"><div class="empty">Načítavam…</div></div>
+</main>
+
+<dialog id="profile">
+  <h3>Profil</h3>
+  <form id="profileForm">
+    <label class="field"><span>Meno pod bodmi v PDF</span><input class="input" name="name" required></label>
+    <label class="field"><span>Nové heslo (nechaj prázdne, ak nemeníš)</span><input class="input" name="password" type="password" autocomplete="new-password"></label>
+    <p class="error" id="profErr"></p>
+    <div class="row"><button type="button" class="btn" onclick="profile.close()">Zrušiť</button><button class="btn primary">Uložiť</button></div>
+  </form>
+</dialog>
+
+<script src="/js/common.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+let ME;
+async function load() {
+  const tasks = await api('/api/tasks');
+  const box = $('#tasks');
+  box.innerHTML = '';
+  if (!tasks.length) return box.append(h('div', { class: 'empty' }, 'Zatiaľ tu nie je žiadna úloha. Nahraj zip vyššie.'));
+  for (const t of tasks) {
+    const pct = t.total ? Math.round(t.graded / t.total * 100) : 0;
+    box.append(h('div', { class: 'taskrow' },
+      h('div', {},
+        h('a', { class: 'name', href: '/editor.html?task=' + t.id }, t.name),
+        h('div', { class: 'meta' }, `Nahral ${t.creator || '—'}, ${new Date(t.created_at + 'Z').toLocaleDateString('sk')}`)),
+      h('div', { style: 'text-align:right' },
+        h('div', { class: 'meta' }, `${t.graded} z ${t.total} opravených`),
+        h('div', { class: 'progress' }, h('i', { style: `width:${pct}%` }))),
+      h('div', { style: 'display:flex;gap:6px' },
+        h('a', { class: 'btn', href: '/api/tasks/' + t.id + '/download' }, 'Stiahnuť zip'),
+        h('button', { class: 'btn danger', onclick: async () => {
+          if (!confirm(`Naozaj zmazať úlohu „${t.name}" aj so všetkými opravami?`)) return;
+          await api('/api/tasks/' + t.id, { method: 'DELETE' }); load();
+        } }, 'Zmazať'))));
+  }
+}
+function uploadZip(file) {
+  $('#upErr').textContent = '';
+  if (!/\.zip$/i.test(file.name)) { $('#upErr').textContent = 'Toto nie je zip súbor.'; return; }
+  const fd = new FormData(); fd.append('zip', file);
+  const btn = $('#pick');
+  btn.disabled = true;
+  const mb = (file.size / 1048576).toFixed(0);
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/tasks');
+  xhr.upload.onprogress = e => {
+    if (e.lengthComputable) btn.textContent = e.loaded < e.total
+      ? `Nahrávam ${Math.round(e.loaded / e.total * 100)} % z ${mb} MB`
+      : 'Rozbaľujem riešenia…';
+  };
+  const done = msg => { btn.disabled = false; btn.textContent = 'Vybrať zip'; if (msg) $('#upErr').textContent = msg; };
+  xhr.onerror = () => done('Spojenie so serverom sa prerušilo.');
+  xhr.onload = () => {
+    let data = null;
+    try { data = JSON.parse(xhr.responseText); } catch { /* napr. HTML chyba z proxy */ }
+    if (xhr.status >= 200 && xhr.status < 300 && data) { location.href = '/editor.html?task=' + data.id; return; }
+    if (xhr.status === 401) { location.href = '/login.html'; return; }
+    if (xhr.status === 413 && !data) return done(`Zip (${mb} MB) odmietol proxy server pred aplikáciou. V nginx zvýš client_max_body_size.`);
+    done((data && data.error) || `Nahranie zlyhalo (HTTP ${xhr.status}).`);
+  };
+  xhr.send(fd);
+}
+$('#pick').onclick = () => $('#zipInput').click();
+$('#zipInput').onchange = e => e.target.files[0] && uploadZip(e.target.files[0]);
+const drop = $('#drop');
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); e.dataTransfer.files[0] && uploadZip(e.dataTransfer.files[0]); };
+
+$('#profileBtn').onclick = () => { $('#profileForm').name.value = ME.name; $('#profErr').textContent = ''; $('#profile').showModal(); };
+$('#profileForm').onsubmit = async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  try {
+    await api('/api/auth/me', { method: 'PUT', body: { name: f.get('name'), password: f.get('password') || undefined } });
+    ME.name = f.get('name'); $('#me').textContent = ME.email; $('#profile').close();
+  } catch (err) { $('#profErr').textContent = err.message; }
+};
+(async () => { ME = await api('/api/auth/me'); $('#me').textContent = ME.email; load(); })();
+</script>
+</body>
+</html>

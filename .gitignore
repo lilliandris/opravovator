@@ -1,0 +1,27 @@
+# závislosti a zostavené súbory
+node_modules/
+dist/
+*.tsbuildinfo
+
+# tajné nastavenia (vzor je v .env.example)
+.env
+.env.*
+!.env.example
+
+# dáta aplikácie a zálohy – nikdy do gitu (opravy, PDF riešiteľov, export databázy)
+data/
+backups/
+images/
+
+# skutočné riešenia riešiteľov (osobné údaje) – v gite len návod
+template_folder_structure/*
+!template_folder_structure/howto.txt
+
+# dočasné súbory
+*.tmp
+*.tmp.*
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

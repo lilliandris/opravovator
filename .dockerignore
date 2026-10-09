@@ -1,0 +1,16 @@
+node_modules
+**/node_modules
+**/dist
+data
+legacy
+template_folder_structure
+.env
+.git
+backups/
+images/
+# skripty na správu (len v gite, nie v image)
+run.sh
+stop.sh
+build.sh
+backup.sh
+scripts

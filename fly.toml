@@ -1,0 +1,50 @@
+# Nasadenie na Fly.io – postup je v README (časť „Nasadenie na Fly.io“).
+# Názov appky musí byť na Fly jedinečný; ak je obsadený, zmeň ho (adresa bude https://<app>.fly.dev).
+app = "opravovator"
+primary_region = "fra"
+
+# pri deployi: SIGTERM a až 30 s na dokončenie rozbehnutého ukladania (predvolené je 5 s)
+kill_signal = "SIGTERM"
+kill_timeout = "30s"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "3000"
+  DATA_DIR = "/data"
+  ALLOWED_DOMAINS = "trojsten.sk"
+  COOKIE_SECURE = "auto"
+  # limit bezplatného Neonu (0,5 GB), ukazuje sa v admin paneli
+  DB_LIMIT_MB = "512"
+  # tajné hodnoty (DATABASE_URL, GOOGLE_CLIENT_ID) sa nastavujú cez `fly secrets set`
+
+# disk na PDF, vypálené opravy a obrázky (databáza je v Neone)
+[mounts]
+  source = "opravovator_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  # pri nečinnosti sa stroj zastaví a pri prvej požiadavke sám spustí;
+  # stále zapnutý: auto_stop_machines = "off" a min_machines_running = 1
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 200
+    hard_limit = 250
+
+  [[http_service.checks]]
+    grace_period = "30s"
+    interval = "30s"
+    method = "GET"
+    path = "/api/health"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
